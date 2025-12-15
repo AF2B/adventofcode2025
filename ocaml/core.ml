@@ -25,12 +25,6 @@ let read_line_path path =
     close_in open_ic;
     Buffer.contents buffer
 
-(* let read_line path =
-  let ic = Stdlib.open_in path in
-  let content = Stdlib.input_line ic in
-  Stdlib.close_in ic;
-  content *)
-
   let parse_input input = 
   input
   |> normalize_input
