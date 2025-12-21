@@ -5,8 +5,6 @@ from pathlib import Path
 LetterNumber = NewType("LetterNumber", str)
 NumericValue = NewType("NumericValue", int)
 NormalizedData = NewType("NormalizedData", List[str])
-LineFeed = NewType("LineFeed", str)
-CarriageReturn = NewType("CarriageReturn", str)
 
 @dataclass(frozen=True)
 class RawInput:
@@ -15,11 +13,6 @@ class RawInput:
 @dataclass(frozen=True)
 class InputFilePath:
     value: Path
-
-@dataclass(frozen=True)
-class ContentRules:
-    LineFeed: LineFeed
-    CarriageReturn: CarriageReturn
 
 def normalizeData(content: RawInput) -> NormalizedData:
     lines: List[str] = content.content.splitlines()
