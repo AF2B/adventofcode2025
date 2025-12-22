@@ -1,10 +1,20 @@
-from typing import NewType, List
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NewType, Literal, Tuple
 
-LetterNumber = NewType("LetterNumber", str)
+from result import Result, Ok, Err
+
 NumericValue = NewType("NumericValue", int)
-NormalizedData = NewType("NormalizedData", List[str])
+Direction = Literal["L", "R"]
+
+@dataclass(frozen=True)
+class Instruction:
+    direction: Direction
+    steps: NumericValue
+
+@dataclass(frozen=True)
+class NormalizedData:
+    values: Tuple[str, ...]
 
 @dataclass(frozen=True)
 class RawInput:
@@ -14,69 +24,101 @@ class RawInput:
 class InputFilePath:
     value: Path
 
-def normalizeData(content: RawInput) -> NormalizedData:
-    lines: List[str] = content.content.splitlines()
-    return NormalizedData(lines)
+@dataclass(frozen=True)
+class ParseError:
+    reason: str
+    raw: str
 
-def readInputFile(path: InputFilePath) -> RawInput:
+def readInputFile(path: InputFilePath) -> Result[RawInput, str]:
     if not path.value.exists():
-        raise FileNotFoundError(f"File not found: {path.value}")
-    
-    content: str = path.value.read_text(encoding="utf-8")
-    return RawInput(
-        content=content
+        return Err(f"File not found: {path.value}")
+
+    content = path.value.read_text(encoding="utf-8")
+    return Ok(RawInput(content=content))
+
+def normalizeData(raw: RawInput) -> NormalizedData:
+    values = tuple(
+        value.strip()
+        for value in raw.content.replace("\r", "\n").split("\n")
+        if value.strip()
+    )
+    return NormalizedData(values)
+
+def parse_instruction(raw: str) -> Result[Instruction, ParseError]:
+    if len(raw) < 2:
+        return Err(ParseError("Instruction too short", raw))
+
+    direction = raw[0]
+    if direction not in ("L", "R"):
+        return Err(ParseError("Invalid direction", raw))
+
+    steps_part = raw[1:]
+    if not steps_part.isdigit():
+        return Err(ParseError("Invalid numeric value", raw))
+
+    return Ok(
+        Instruction(
+            direction=direction,
+            steps=NumericValue(int(steps_part))
+        )
     )
 
-def separateLetterFromValue(letterNumber: LetterNumber) -> NumericValue:
-    raw: str = letterNumber
+def parse_instructions(
+    data: NormalizedData
+) -> Result[Tuple[Instruction, ...], ParseError]:
 
-    if len(raw) < 2:
-        raise ValueError("Input must contain one letter followed by numbers.")
+    instructions: list[Instruction] = []
 
-    letter_part: str = raw[0]
-    numeric_part: str = raw[1:]
+    for raw in data.values:
+        result = parse_instruction(raw)
 
-    if not letter_part.isalpha():
-        raise ValueError("Input must start with a letter.")
+        if isinstance(result, Err):
+            return result
 
-    if not numeric_part.isdigit():
-        raise ValueError("Input must contain only digits after the letter.")
+        instructions.append(result.ok_value)
 
-    return NumericValue(int(numeric_part))
+    return Ok(tuple(instructions))
 
-def rollet(start_point: int, inputs: NormalizedData) -> int:
-    LIMIT_UP: int = 99
-    LIMIT_DOWN: int = 0
-    SIZE: int = LIMIT_UP - LIMIT_DOWN + 1
+def rollet(start_point: int, instructions: Tuple[Instruction, ...]) -> int:
+    LIMIT_UP = 99
+    LIMIT_DOWN = 0
+    SIZE = LIMIT_UP - LIMIT_DOWN + 1
 
-    actual_position: int = start_point
-    pwd: int = 0
+    position = start_point
+    pwd = 0
 
-    for instruction in inputs:
-        direction: str = instruction[0]
-        steps: int = separateLetterFromValue(LetterNumber(instruction))
+    for instruction in instructions:
+        delta = (
+            instruction.steps
+            if instruction.direction == "R"
+            else -instruction.steps
+        )
 
-        if direction == "R":
-            delta = steps
-        elif direction == "L":
-            delta = -steps
-        else:
-            raise ValueError(f"Invalid instruction: {instruction}")
+        position = (position + delta) % SIZE
 
-        new_position: int = (actual_position + delta) % SIZE
-
-        if new_position == 0:
+        if position == 0:
             pwd += 1
-
-        actual_position = new_position
 
     return pwd
 
 def main() -> None:
-    raw_data: RawInput = readInputFile(InputFilePath(Path("./input.txt")))
-    normalizedData: NormalizedData = normalizeData(raw_data)
-    result = rollet(50, normalizedData)
-    print(f"Result: {result}")
+    file_path = InputFilePath(Path("./input.txt"))
+
+    result = readInputFile(file_path)
+
+    if isinstance(result, Err):
+        print(result.value)
+        return
+
+    normalized = normalizeData(result.ok_value)
+    parsed = parse_instructions(normalized)
+
+    if isinstance(parsed, Err):
+        print(f"Parse error: {parsed.value.reason} -> {parsed.value.raw}")
+        return
+
+    output = rollet(50, parsed.ok_value)
+    print(f"Rollet result: {output}")
 
 if __name__ == "__main__":
     main()
