@@ -29,14 +29,14 @@ class ParseError:
     reason: str
     raw: str
 
-def readInputFile(path: InputFilePath) -> Result[RawInput, str]:
+def read_input_file(path: InputFilePath) -> Result[RawInput, str]:
     if not path.value.exists():
         return Err(f"File not found: {path.value}")
 
     content = path.value.read_text(encoding="utf-8")
     return Ok(RawInput(content=content))
 
-def normalizeData(raw: RawInput) -> NormalizedData:
+def normalize_data(raw: RawInput) -> NormalizedData:
     values = tuple(
         value.strip()
         for value in raw.content.replace("\r", "\n").split("\n")
@@ -104,13 +104,13 @@ def rollet(start_point: int, instructions: Tuple[Instruction, ...]) -> int:
 def main() -> None:
     file_path = InputFilePath(Path("./input.txt"))
 
-    result = readInputFile(file_path)
+    result = read_input_file(file_path)
 
     if isinstance(result, Err):
         print(result.value)
         return
 
-    normalized = normalizeData(result.ok_value)
+    normalized = normalize_data(result.ok_value)
     parsed = parse_instructions(normalized)
 
     if isinstance(parsed, Err):
