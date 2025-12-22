@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NewType, Literal, Tuple
+from typing import Literal, Tuple
 
 from result import Result, Ok, Err
 
-NumericValue = NewType("NumericValue", int)
-Direction = Literal["L", "R"]
+type NumericValue = int
+type Direction = Literal["L", "R"]
 
 @dataclass(frozen=True)
 class Instruction:
@@ -59,7 +59,7 @@ def parse_instruction(raw: str) -> Result[Instruction, ParseError]:
     return Ok(
         Instruction(
             direction=direction,
-            steps=NumericValue(int(steps_part))
+            steps=int(steps_part)
         )
     )
 
